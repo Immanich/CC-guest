@@ -1,0 +1,7 @@
+{
+  "java.compile.nullAnalysis.mode": "disabled",
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 500,
+  "dart.flutterHotReloadOnSave": "all",
+  "dart.hotReloadOnSave": "all"
+}

@@ -1,3 +1,5 @@
+import 'package:citizen_charter/screens/services/accounting_services/acc_serv_1.dart';
+import 'package:citizen_charter/screens/(notdone)table.dart';
 import 'package:flutter/material.dart';
 
 class AccountingServices extends StatelessWidget {
@@ -7,13 +9,9 @@ class AccountingServices extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          children: [
-            Text(
-              'ACCOUNTING',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-            ),
-          ],
+        title: Text(
+          'ACCOUNTING',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Color(0xffCCD8FE),
         toolbarHeight: 70,
@@ -25,28 +23,36 @@ class AccountingServices extends StatelessWidget {
             children: <Widget>[
               Text('Administrative Services', style: TextStyle(fontSize: 25)),
               SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                width: double.infinity,
-                // height: 150,
-                decoration: BoxDecoration(
-                    color: Color(0xffCCD8FE),
-                    borderRadius: BorderRadius.all(Radius.circular(10))),
-                child: Column(
-                  children: [
-                    Text('PROCESSING OF CLAIMS\n(MUNICIPAL TRANSACTIONS)',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w400,
-                            fontFamily: 'Gilroy'),
-                        textAlign: TextAlign.center),
-                    Text(
-                        "To safeguard the use and disposition of the Municipal Government's assets and to determine its liabilities from claims, pre-audit is undertaken by the Municipal Accountant to determine that all necessary supporting documents of vouchers claims are submitted.",
-                        style: TextStyle(
-                            // fontSize: 16,
-                            ),
-                        textAlign: TextAlign.justify)
-                  ],
+              GestureDetector(
+                onTap: () => {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => Account1()),
+                  ),
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  width: double.infinity,
+                  // height: 150,
+                  decoration: BoxDecoration(
+                      color: Color(0xffCCD8FE),
+                      borderRadius: BorderRadius.all(Radius.circular(10))),
+                  child: Column(
+                    children: [
+                      Text('PROCESSING OF CLAIMS\n(MUNICIPAL TRANSACTIONS)',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
+                              fontFamily: 'Gilroy'),
+                          textAlign: TextAlign.center),
+                      Text(
+                          "To safeguard the use and disposition of the Municipal Government's assets and to determine its liabilities from claims, pre-audit is undertaken by the Municipal Accountant to determine that all necessary supporting documents of vouchers claims are submitted.",
+                          style: TextStyle(
+                              // fontSize: 16,
+                              ),
+                          textAlign: TextAlign.justify)
+                    ],
+                  ),
                 ),
               ),
               SizedBox(height: 10),
@@ -121,7 +127,8 @@ class AccountingServices extends StatelessWidget {
                         style: TextStyle(
                             // fontSize: 16,
                             ),
-                        textAlign: TextAlign.justify)
+                        textAlign: TextAlign.justify),
+                    // Expanded(child: TableExampleApp())
                   ],
                 ),
               ),

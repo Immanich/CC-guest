@@ -35,11 +35,11 @@ class _HomeState extends State<Home> {
                           // MenuBtn(),
                           GestureDetector(
                             onTap: () {
-                              // Navigator.push(
-                              //   context,
-                              //   MaterialPageRoute(
-                              //       builder: (context) => AccountingServices()),
-                              // );
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => AccountingServices()),
+                              );
                             },
                             child: Column(
                               children: <Widget>[

@@ -1,10 +1,12 @@
 //THE SERVICES IS STILL NOT WORKING
 
-import 'package:citizen_charter/screens/offices/office_dropdown.dart';
+import 'package:citizen_charter/screens/office_dropdown.dart';
 import 'package:flutter/material.dart';
-import 'package:citizen_charter/screens/offices/services.dart'
-    as office_services;
-import 'package:citizen_charter/screens/offices/office_dropdown.dart';
+import 'package:citizen_charter/screens/services.dart' as office_services;
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+// import 'package:citizen_charter/screens/offices/office_dropdown.dart';
 
 class Feedbacks extends StatefulWidget {
   const Feedbacks({super.key});
@@ -16,10 +18,70 @@ class Feedbacks extends StatefulWidget {
 class _FeedbacksState extends State<Feedbacks> {
   String _selectedService = '';
   List<DropdownMenuItem<String>> _selectedServiceList = [];
-  String _selectedOffice = '';
+  String? _selectedOffice = '';
   final TextEditingController _feedbackController = TextEditingController();
   final _nameController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final _formKey = GlobalKey<FormState>();
+  List<Map<String, String?>> feedbackSubmissions = [];
+  final GlobalKey<OfficeDropdownState> _officeDropdownKey =
+      GlobalKey<OfficeDropdownState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeedbackSubmissions(); // Load feedback on page open
+  }
+
+  // Load feedback from SharedPreferences
+  Future<void> _loadFeedbackSubmissions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedFeedback = prefs.getString('feedback_submissions');
+    if (savedFeedback != null) {
+      setState(() {
+        feedbackSubmissions = List<Map<String, String>>.from(
+          json.decode(savedFeedback),
+        );
+      });
+    }
+  }
+
+  // Save feedback to SharedPreferences
+  Future<void> _saveFeedbackSubmissions() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'feedback_submissions',
+      json.encode(feedbackSubmissions),
+    );
+  }
+
+  // Add new feedback and save it
+  void _addFeedbackSubmission(Map<String, String> submission) {
+    setState(() {
+      feedbackSubmissions.add(submission); // Add feedback to list
+      _saveFeedbackSubmissions(); // Save the updated list
+    });
+  }
+
+  //### Feedback Items
+
+  void _itemFeedback() async {
+    String feedbackText = _feedbackController.text;
+
+    // Save feedback to local storage
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> feedbackList = prefs.getStringList('feedbacks') ?? [];
+    feedbackList.add(feedbackText);
+    await prefs.setStringList('feedbacks', feedbackList);
+
+    print('Feedback submitted: $feedbackText');
+    _feedbackController.clear();
+  }
+
+  Future<List<String>> _getFeedbackSubmissions() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('feedbacks') ?? [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,10 +251,10 @@ class _FeedbacksState extends State<Feedbacks> {
                   SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10), // Increased padding
+                        horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Color(0xffCFD9FD),
-                      border: Border.all(color: Color(0xff000000), width: 1.0),
+                      color: Color.fromARGB(255, 215, 223, 255),
+                      // border: Border.all(color: Color(0xff000000), width: 1.0),
                       borderRadius: BorderRadius.all(Radius.circular(5)),
                     ),
                     child: Column(
@@ -209,72 +271,238 @@ class _FeedbacksState extends State<Feedbacks> {
                           color: Colors.black,
                         ),
                         SizedBox(height: 5),
-                        TextField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Name (optional)',
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              TextField(
+                                controller: _nameController,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  labelText: 'Name (optional)',
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              OfficeDropdown(
+                                key: _officeDropdownKey,
+                                onChanged: (office) {
+                                  setState(() {
+                                    _selectedOffice = office;
+                                    _selectedService = '';
+                                    // _selectedServiceList =
+                                    //     office_services.getServices(office);
+                                  });
+                                },
+                              ),
+                              SizedBox(height: 10),
+                              DropdownButtonFormField<String>(
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  labelText: 'WHAT SERVICE?',
+                                ),
+                                value: _selectedService.isNotEmpty
+                                    ? _selectedService
+                                    : null,
+                                items: _selectedServiceList,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedService = value ?? '';
+                                  });
+                                },
+                                selectedItemBuilder: (BuildContext context) {
+                                  return _selectedServiceList.map<Widget>(
+                                      (DropdownMenuItem<String> item) {
+                                    return ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth:
+                                            MediaQuery.of(context).size.width *
+                                                0.55,
+                                      ),
+                                      child: Text(
+                                        item.value ?? '',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                              SizedBox(height: 10),
+                              TextFormField(
+                                controller: _feedbackController,
+                                maxLines: 5,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  labelText: 'Your Feedback',
+                                  alignLabelWithHint: true,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Feedback is required before proceeding.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              SizedBox(height: 10),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    print('Feedback submitted!');
+                                    setState(() {
+                                      String submissionTime =
+                                          DateFormat('yyyy-MM-dd HH:mm:ss')
+                                              .format(DateTime.now());
+                                      feedbackSubmissions.add({
+                                        'name': _nameController.text.isNotEmpty
+                                            ? _nameController.text
+                                            : 'Anonymous',
+                                        'office': _selectedOffice,
+                                        'service': _selectedService,
+                                        'feedback': _feedbackController.text,
+                                        'submissionTime': submissionTime,
+                                      });
+
+                                      _feedbackController.clear();
+                                      _nameController.clear();
+                                      _selectedOffice = null;
+                                      _selectedService = '';
+                                      _selectedServiceList = [];
+                                      _officeDropdownKey.currentState
+                                          ?.resetOffice();
+                                    });
+                                  } else {
+                                    print('Please fill in the required fields');
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Color(0xff0EF64E).withOpacity(0.7),
+                                  foregroundColor: Colors.black,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                                child: Text('Submit'),
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(height: 10),
-                        OfficeDropdown(
-                          onChanged: (office) {
-                            setState(() {
-                              _selectedOffice = office;
-                              _selectedService = '';
-                              _selectedServiceList =
-                                  office_services.getServices(office);
-                            });
-                          },
-                        ),
-                        SizedBox(height: 10),
-                        DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'WHAT SERVICE?',
-                          ),
-                          value: _selectedService.isNotEmpty
-                              ? _selectedService
-                              : null,
-                          items: _selectedServiceList,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedService = value ?? '';
-                            });
-                          },
-                        ),
-                        SizedBox(height: 10),
-                        TextField(
-                          controller: _feedbackController,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Your Feedback',
-                            alignLabelWithHint: true,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _feedbackController.clear();
-                              _nameController.clear();
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xff0EF64E)
-                                .withOpacity(0.7), // Set the background color
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  5), // Set the border radius to 5
-                            ),
-                          ),
-                          child: Text('Submit'),
                         ),
                       ],
                     ),
-                  )
+                  ),
+                  // _buildFeedbackForm(),
+                  SizedBox(height: 10),
+                  if (feedbackSubmissions.isNotEmpty)
+                    Column(
+                      children: feedbackSubmissions.map((submission) {
+                        return GestureDetector(
+                          onTap: () {
+                            var comment = submission['comment'];
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => DetailsPage(
+                                          name:
+                                              submission['name'] ?? 'Anonymous',
+                                          office: submission['office'] ??
+                                              'Anonymous',
+                                          service: submission['service'] ??
+                                              'Anonymous',
+                                          feedback: submission['feedback'] ??
+                                              'Anonymous',
+                                        )));
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(255, 215, 223, 255),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.person),
+                                          Container(
+                                            width: 100,
+                                            child: Text(
+                                              ' ${submission['name']}',
+                                              style: TextStyle(fontSize: 16),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                          child: Text(
+                                              (submission['submissionTime'] ??
+                                                  'No time available'))),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'Office: ${submission['office']}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black.withOpacity(0.7),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'Service: ${submission['service']}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.black.withOpacity(0.7),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'Feedback: ${submission['feedback']}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 5),
+                                  Row(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.message_rounded, size: 24),
+                                          SizedBox(width: 2),
+                                          Container(child: Text('Comment')),
+                                        ],
+                                      ),
+                                      SizedBox(width: 15),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.thumb_up_sharp, size: 24),
+                                          SizedBox(width: 2),
+                                          Container(child: Text('Helpful'))
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                 ],
               ),
             ),
@@ -298,4 +526,304 @@ class _FeedbacksState extends State<Feedbacks> {
   }
 }
 
-// void
+class DetailsPage extends StatefulWidget {
+  final String name;
+  final String office;
+  final String service;
+  final String feedback;
+  // final Map<String, dynamic> comment;
+
+  DetailsPage({
+    required this.name,
+    required this.office,
+    required this.service,
+    required this.feedback,
+    // required this.comment,
+  });
+
+  @override
+  State<DetailsPage> createState() => _DetailsPageState();
+}
+
+class _DetailsPageState extends State<DetailsPage> {
+  // FocusNode _focusNode = FocusNode();
+
+  FocusNode _focusNode = FocusNode();
+  bool _isTextFieldFocused = false;
+  String _inputText = '';
+  List<String> _sentText = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSentTexts();
+
+    // Listen to the focus state of the TextField
+    _focusNode.addListener(() {
+      setState(() {
+        _isTextFieldFocused = _focusNode.hasFocus;
+      });
+    });
+  }
+
+  final TextEditingController _textController =
+      TextEditingController(); // Controller for the TextFormField
+
+  Future<void> _loadSentTexts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedTexts = prefs.getString('sent_texts');
+    if (savedTexts != null) {
+      setState(() {
+        _sentText = List<String>.from(json.decode(savedTexts)); // Decode JSON
+      });
+    }
+  }
+
+  Future<void> _saveSentTexts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('sent_texts', json.encode(_sentText)); // Encode JSON
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _handleSend() {
+    if (_textController.text.isNotEmpty) {
+      setState(() {
+        _sentText.add(_textController.text); // Add the new text to the list
+        _textController.clear(); // Clear the input field
+        _saveSentTexts(); // Save the updated list of texts
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String _message = ''; // To store a message for user feedback
+
+    double bottomSheetHeight = MediaQuery.of(context).size.height / 15;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('FEEDBACK', style: TextStyle(fontFamily: "Gilroy")),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(Icons.person, size: 32),
+                SizedBox(width: 5),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 110,
+                      child: Text(
+                        '${widget.name}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // SizedBox(height: 10),
+                    Container(
+                      width: 110,
+                      child: Text(
+                        '${widget.office}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                    height: 40,
+                    child: VerticalDivider(
+                        width: 20,
+                        color: Colors.black.withOpacity(0.7),
+                        thickness: 1)),
+                Container(
+                  width: 150,
+                  child: Text(
+                    '${widget.service}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black.withOpacity(0.7),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 15),
+            Container(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${widget.feedback}',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+            SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _sentText.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Text(
+                      _sentText[index],
+                      style: TextStyle(fontSize: 18, color: Colors.black),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Spacer(),
+            _buildBottomSheet(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomSheet() {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: Colors.black.withOpacity(0.5),
+            width: 1.0,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _textController,
+                decoration: InputDecoration(
+                  fillColor: const Color.fromARGB(255, 218, 218, 218),
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  hintText: 'Write a comment...',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 20.0),
+                ),
+              ),
+            ),
+            SizedBox(width: 5),
+            GestureDetector(
+              onTap: _handleSend,
+              child: Icon(Icons.send, size: 30, color: Colors.blue[700]),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+// bottomSheet: Container(
+      //   height: bottomSheetHeight,
+      //   decoration: BoxDecoration(
+      //     // color: Colors.black38,
+      //     border: Border(
+      //       top: BorderSide(
+      //         color: Colors.black
+      //             .withOpacity(0.5), // Change this to your desired color
+      //         width: 1.0, // Change the width as needed
+      //       ),
+      //     ),
+      //   ),
+      //   child: Padding(
+      //     padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      //     child: Row(
+      //       children: [
+      //         Expanded(
+      //           child: TextFormField(
+      //             controller: _textController,
+      //             decoration: InputDecoration(
+      //               fillColor: const Color.fromARGB(
+      //                   255, 218, 218, 218), // Background color
+      //               filled: true,
+      //               border: OutlineInputBorder(
+      //                 borderRadius:
+      //                     BorderRadius.circular(30.0), // Rounded corners
+      //                 borderSide: BorderSide.none, // No border line
+      //               ),
+      //               contentPadding: EdgeInsets.symmetric(horizontal: 20.0),
+      //             ),
+      //             onFieldSubmitted: (text) {
+      //               setState(() {
+      //                 _inputText = text;
+      //               });
+      //             },
+      //           ),
+      //         ),
+      //         GestureDetector(
+      //           onTap: _handleSend,
+      //           child: Icon(Icons.send, size: 30, color: Colors.blue[700]),
+      //         )
+      //       ],
+      //     ),
+      //   ),
+      // ),
+
+
+
+              // ElevatedButton(
+              //   child: Text('Button'), // Replace with your desired button text
+              //   onPressed: () {
+              //     // You can also add additional logic here if needed
+              //     setState(() {
+              //       // If you want to clear the input field after button press
+              //       // _inputText = '';
+              //     });
+              //   },
+              // ),
+// child: TextField(
+          //   focusNode: _focusNode,
+          //   decoration: InputDecoration(
+          //     // Use InputBorder.none for the default state
+          //     border: InputBorder.none,
+          //     // Apply OutlineInputBorder for enabled and focused states
+          //     enabledBorder: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(30.0),
+          //       borderSide: BorderSide.none, // No border color
+          //     ),
+          //     focusedBorder: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(30.0),
+          //       borderSide: BorderSide.none, // No border color
+          //     ),
+          //     fillColor: const Color.fromARGB(255, 186, 186, 186)
+          //         .withOpacity(0.5), // Set your desired background color
+          //     filled: true,
+          //     hintText: 'Write a comment...',
+          //     contentPadding:
+          //         EdgeInsets.symmetric(vertical: 10.0, horizontal: 15),
+          //   ),
+          // ),

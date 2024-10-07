@@ -7,7 +7,7 @@ class Continue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Color(0xFFE7ECFE), // set the background color to #F7F9FF
+      color: Color(0xFFE7ECFE), 
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,

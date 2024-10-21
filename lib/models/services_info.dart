@@ -1,21 +1,20 @@
 import 'dart:convert';
 
-class ServicesInfo {
-  final int id;
-  final int serviceId;
-  final int step;
-  final String? infoTitle;
-  final List<dynamic>
-      clients; // Since it's a JSON array, we represent it as a list.
-  final List<dynamic> agencyAction; // Same here for JSON array.
-  final List<dynamic> fees;
-  final List<dynamic>
-      processingTime; // Represent as a list due to JSON structure.
-  final List<dynamic> personResponsible; // Same here.
-  final double totalFees;
-  final String totalResponseTime;
+class ServiceInfo {
+  int id;
+  int serviceId;
+  int step;
+  String infoTitle;
+  List<String> clients;
+  List<String> agencyAction;
+  List<String> fees;
+  List<String> processingTime;
+  List<String> personResponsible;
+  String totalFees;
+  String totalResponseTime;
+  String note;
 
-  ServicesInfo({
+  ServiceInfo({
     required this.id,
     required this.serviceId,
     required this.step,
@@ -27,24 +26,43 @@ class ServicesInfo {
     required this.personResponsible,
     required this.totalFees,
     required this.totalResponseTime,
+    required this.note,
   });
 
-  factory ServicesInfo.fromJson(Map<String, dynamic> json) {
-    return ServicesInfo(
+  factory ServiceInfo.fromJson(Map<String, dynamic> json) {
+    return ServiceInfo(
       id: json['id'],
       serviceId: json['service_id'],
       step: json['step'],
-      infoTitle: json['info_title']?.toString(),
-      clients: jsonDecode(json['clients']), // Decode JSON array into a list.
-      agencyAction:
-          jsonDecode(json['agency_action']), // Decode JSON array into a list.
-      fees: jsonDecode(json['fees'].toDouble()),
-      processingTime:
-          jsonDecode(json['processing_time']), // Decode JSON array into a list.
-      personResponsible: jsonDecode(
-          json['person_responsible']), // Decode JSON array into a list.
-      totalFees: json['total_fees'].toDouble(),
-      totalResponseTime: json['total_response_time'].toString(),
+      infoTitle: json['info_title'] ?? '',
+      clients: _parseStringList(json['clients']),
+      agencyAction: _parseStringList(json['agency_action']),
+      fees: _parseStringList(json['fees']),
+      processingTime: _parseStringList(json['processing_time']),
+      personResponsible: _parseStringList(json['person_responsible']),
+      totalFees: json['total_fees'] ?? '',
+      totalResponseTime: json['total_response_time'] ?? '',
+      note: json['note'] ?? '',
     );
+  }
+
+  // Helper method to handle all List<String> parsing safely
+  static List<String> _parseStringList(dynamic value) {
+    if (value is String) {
+      try {
+        // Try to decode the string assuming it's JSON
+        var decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.map((e) => e.toString()).toList();
+        }
+      } catch (e) {
+        // If it's a simple string, return it as a single-element list
+        return [value];
+      }
+    } else if (value is List) {
+      // If it's already a list, return it as List<String>
+      return value.map((e) => e.toString()).toList();
+    }
+    return []; // Return an empty list if null or invalid
   }
 }

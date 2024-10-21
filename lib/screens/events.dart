@@ -1,157 +1,156 @@
+// import 'package:citizen_charter/network_utils/api.dart';
 import 'package:flutter/material.dart';
+import '../models/event.dart';
+import 'package:citizen_charter/network_utils/api.dart';
 
-class Events extends StatelessWidget {
+class Events extends StatefulWidget {
+  // final Events event;
+
   const Events({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints viewportConstraints) {
-        return SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: viewportConstraints.maxHeight,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(0, 0, 80, 5),
-                    alignment: Alignment.center,
-                    child: Text('Events for you',
-                        style: TextStyle(fontSize: 25),
-                        textAlign: TextAlign.start),
-                  ),
-                  SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => EventPage(
-                                  title:
-                                      "Buy your tickets for \nMiss Bohol 2024!",
-                                  description:
-                                      "BUY YOUR TICKETS FOR MISS BOHOL 2024  as we rally behind Miss Tubigon, Dianne Mariel Ybañez\n\n"
-                                      "General Admission Ticket: Php 150.00\n\n"
-                                      "Get your tickets straight at the Municipal Tourism Office, Potohan, Tubigon, Bohol.\n\n"
-                                      "PAGEANT DATE: July 12, 2024 (7PM)\n"
-                                      "VENUE: Bohol Wisdom School Gym\n\n"
-                                      "#MissBohol2024 #MissTubigon #AnyagSaTubigon #LGUTubigon #TourismTubigon #MarielYbañez",
-                                  imageUrl: 'assets/images/event-pic-1.png',
-                                )),
-                      );
-                    },
-                    child: Column(
-                      children: <Widget>[
-                        Container(
-                          width: 250,
-                          height: 150,
+  State<Events> createState() => _EventsState();
+}
 
-                          // decoration: BoxDecoration(
-                          //   color: Color(0xffCCD8FE),
-                          //   borderRadius: BorderRadius.all(Radius.circular(5)),
-                          // ),
-                          child: Image.asset(
-                            'assets/images/event-pic-1.png',
-                            width: 100,
-                            fit: BoxFit.contain,
-                          ),
+class _EventsState extends State<Events> {
+  List<Event> events = [];
+  bool isLoading = true;
+  String errorMessage = '';
+  // late Future<List<dynamic>> futureEvent;
+  // final Api _api = Api();
+  // final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    // futureEvents = fetchEvents();
+    // futureEvent = _apiService.fetchEvents();
+    fetchEvents();
+  }
+
+  Future<void> fetchEvents() async {
+    try {
+      List<dynamic> eventData = await ApiService().fetchEvents();
+      setState(() {
+        events = eventData.map((data) => Event.fromJson(data)).toList();
+        isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        errorMessage = 'Failed to load events: ${error.toString()}';
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: DefaultTextStyle(
+          style: Theme.of(context).textTheme.bodyMedium!,
+          child: LayoutBuilder(
+            builder:
+                (BuildContext context, BoxConstraints viewportConstraints) {
+              if (isLoading) {
+                return Center(
+                  child: CircularProgressIndicator(), // Show loading spinner
+                );
+              }
+
+              if (errorMessage.isNotEmpty) {
+                return Center(
+                  child: Text(
+                      errorMessage), // Show error message if fetching fails
+                );
+              }
+
+              if (events.isEmpty) {
+                return Center(
+                  child: Text(
+                      'No events available'), // Show if no offices are found
+                );
+              }
+
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: viewportConstraints.maxHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(0, 0, 80, 5),
+                          alignment: Alignment.center,
+                          child: Text('Events for you',
+                              style: TextStyle(fontSize: 25),
+                              textAlign: TextAlign.start),
                         ),
                         SizedBox(height: 10),
-                        Text(
-                          "Buy your tickets for \nMiss Bohol 2024!",
-                          style: TextStyle(fontSize: 16),
-                          textAlign: TextAlign.center,
+                        Column(
+                          children: events.map((event) {
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            EventPage(event: event)));
+                                //   Navigator.push(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (context) => OfficeDetailsScreen(
+                                //       office: office,
+                                //       services: services,
+                                //       servicesInfo: servicesInfo,
+                                //     ),
+                                //   ),
+                                // );
+                              },
+                              child: Column(
+                                children: <Widget>[
+                                  Container(
+                                    width: 250,
+                                    height: 150,
+                                    // child: Image.network(event.image),
+                                    child: Image.network(event.image),
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    event.title,
+                                    style: TextStyle(fontSize: 16),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 20),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => EventPage(
-                                  title:
-                                      "Tubigon’s representative for the \nMister Bohol 2024 competition",
-                                  description:
-                                      "BUY YOUR TICKETS FOR MISS BOHOL 2024  as we rally behind Miss Tubigon, Dianne Mariel Ybañez\n\n"
-                                      "General Admission Ticket: Php 150.00\n\n"
-                                      "Get your tickets straight at the Municipal Tourism Office, Potohan, Tubigon, Bohol.\n\n"
-                                      "PAGEANT DATE: July 12, 2024 (7PM)\n"
-                                      "VENUE: Bohol Wisdom School Gym\n\n"
-                                      "#MissBohol2024 #MissTubigon #AnyagSaTubigon #LGUTubigon #TourismTubigon #MarielYbañez",
-                                  imageUrl: 'assets/images/event-pic-2.png',
-                                )),
-                      );
-                    },
-                    child: Column(
-                      children: <Widget>[
-                        Container(
-                          width: 250,
-                          height: 150,
-                          child: Image.asset(
-                            'assets/images/event-pic-2.png',
-                            width: 100,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          "Tubigon’s representative for the \nMister Bohol 2024 competition.",
-                          style: TextStyle(fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      // Add your code here to handle the tap event
-                      // Navigator.pushNamed(context, '/events');
-                      // print('Assessor\'s Office icon tapped');
-                    },
-                    child: Column(
-                      children: <Widget>[
-                        Container(
-                          width: 250,
-                          height: 150,
-                          child: Image.asset(
-                            'assets/images/event-pic-3.png',
-                            width: 100,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          "TERSSU personnel at \nyour service!",
-                          style: TextStyle(fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
 class EventPage extends StatelessWidget {
-  final String title;
-  final String description;
-  final String imageUrl;
+  final Event event;
 
-  EventPage(
-      {required this.title, required this.description, required this.imageUrl});
+  EventPage({required this.event});
+  // final String title;
+  // final String description;
+  // final String imageUrl;
+  // EventPage(
+  //     {required this.title, required this.description, required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +162,7 @@ class EventPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.fromLTRB(40, 20, 40, 20),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Container(
               // padding: const EdgeInsets.fromLTRB(0, 0, 80, 5),
@@ -172,17 +172,18 @@ class EventPage extends StatelessWidget {
             ),
             Container(
               width: double.infinity,
-              child: Image.asset(imageUrl, fit: BoxFit.contain),
+              child: Image.network(event.image, fit: BoxFit.contain),
+              // child: Image.network(event.image),
             ),
             SizedBox(height: 10),
             Text(
-              title,
+              event.title,
               style: TextStyle(fontSize: 20, fontFamily: "Gilroy"),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 10),
             Text(
-              description,
+              event.description,
               style: TextStyle(fontSize: 16),
               textAlign: TextAlign.justify,
             ),

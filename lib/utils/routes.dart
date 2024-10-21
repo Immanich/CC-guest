@@ -1,6 +1,3 @@
-// import 'package:DILGDOCS/screens/change_password_screen.dart';
-// import 'package:DILGDOCS/screens/edit_user.dart';
-// import 'package:DILGDOCS/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import '../screens/continue.dart';
 import '../screens/home.dart';
@@ -27,6 +24,7 @@ class Routes {
       events: (context) => Events(),
       notifications: (context) => Notifications(),
       profile: (context) => Profile(),
+      // events: (context) => EventPage(),
       accounting_services: (context) => AccountingServices(),
     };
   }

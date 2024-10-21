@@ -1,5 +1,7 @@
 //THE SERVICES IS STILL NOT WORKING
 
+import 'package:citizen_charter/models/service.dart';
+import 'package:citizen_charter/network_utils/api.dart';
 import 'package:citizen_charter/screens/office_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:citizen_charter/screens/services.dart' as office_services;
@@ -37,8 +39,10 @@ class _FeedbacksState extends State<Feedbacks> {
   Future<void> _loadFeedbackSubmissions() async {
     final prefs = await SharedPreferences.getInstance();
     final String? savedFeedback = prefs.getString('feedback_submissions');
+
     if (savedFeedback != null) {
       setState(() {
+        // Load the list of feedback submissions with the correct field names
         feedbackSubmissions = List<Map<String, String>>.from(
           json.decode(savedFeedback),
         );
@@ -46,24 +50,52 @@ class _FeedbacksState extends State<Feedbacks> {
     }
   }
 
-  // Save feedback to SharedPreferences
-  Future<void> _saveFeedbackSubmissions() async {
+  Future<List<Map<String, String>>> _getFeedbackSubmissions() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'feedback_submissions',
-      json.encode(feedbackSubmissions),
-    );
+    String? savedSubmissions = prefs.getString('feedback_submissions');
+
+    if (savedSubmissions != null) {
+      // Decode the JSON string into a list of feedback submissions
+      List<dynamic> submissionsList = json.decode(savedSubmissions);
+
+      return List<Map<String, String>>.from(submissionsList);
+    }
+
+    return [];
   }
+
+  // Save feedback to SharedPreferences
 
   // Add new feedback and save it
   void _addFeedbackSubmission(Map<String, String> submission) {
     setState(() {
-      feedbackSubmissions.add(submission); // Add feedback to list
-      _saveFeedbackSubmissions(); // Save the updated list
+      // Make sure you're adding the actual office_name and service_name, not just the IDs.
+      feedbackSubmissions.add({
+        'name': submission['name'] ?? 'Anonymous',
+        'office_name':
+            submission['office_name'] ?? 'No Office', // Save office_name
+        'service_name':
+            submission['service_name'] ?? 'No Service', // Save service_name
+        'feedback': submission['feedback'] ?? '',
+        // 'submissionTime': submission['submissionTime'] ?? 'No time',
+        // 'comment': submission['comment'] ?? ''
+      });
+
+      // Save the updated list to SharedPreferences
+      _saveFeedbackSubmissions();
     });
   }
 
-  //### Feedback Items
+  Future<void> _saveFeedbackSubmissions() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Save the entire list of feedback submissions, including office_name and service_name
+    await prefs.setString(
+      'feedback_submissions',
+      json.encode(
+          feedbackSubmissions), // This includes office_name and service_name
+    );
+  }
 
   void _itemFeedback() async {
     String feedbackText = _feedbackController.text;
@@ -78,9 +110,42 @@ class _FeedbacksState extends State<Feedbacks> {
     _feedbackController.clear();
   }
 
-  Future<List<String>> _getFeedbackSubmissions() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('feedbacks') ?? [];
+  Future<void> fetchServicesForOfficeFeedback(int officeId) async {
+    try {
+      // Fetch services as a list of Service objects
+      List<Service> services =
+          await ApiService().fetchServicesForOfficeFeedback(officeId);
+
+      // Log fetched services
+      print('Fetched services for office $officeId: $services');
+
+      // Check if services are empty
+      if (services.isEmpty) {
+        print('No services found for office $officeId');
+      }
+
+      // Map services to DropdownMenuItems, now using Service properties directly
+      List<DropdownMenuItem<String>> serviceItems =
+          services.map<DropdownMenuItem<String>>((service) {
+        return DropdownMenuItem<String>(
+          value: service.id
+              .toString(), // Use the 'id' property of the Service class
+          child: Text(service
+              .service_name), // Use the 'service_name' property of the Service class
+        );
+      }).toList();
+
+      // Update the state
+      setState(() {
+        _selectedServiceList = serviceItems;
+        _selectedService = ''; // Reset selected service
+      });
+
+      // Log the updated service list
+      print('Updated service list: $_selectedServiceList');
+    } catch (error) {
+      print('Error fetching services: $error');
+    }
   }
 
   @override
@@ -288,14 +353,20 @@ class _FeedbacksState extends State<Feedbacks> {
                                 onChanged: (office) {
                                   setState(() {
                                     _selectedOffice = office;
-                                    _selectedService = '';
-                                    // _selectedServiceList =
-                                    //     office_services.getServices(office);
+                                    _selectedService =
+                                        ''; // Reset selected service
+                                    _selectedServiceList =
+                                        []; // Clear services list while fetching
                                   });
+
+                                  // Call fetch services for the selected office
+                                  fetchServicesForOfficeFeedback(int.parse(
+                                      office)); // Ensure office ID is passed correctly
                                 },
                               ),
                               SizedBox(height: 10),
                               DropdownButtonFormField<String>(
+                                isDense: true,
                                 decoration: InputDecoration(
                                   border: OutlineInputBorder(),
                                   labelText: 'WHAT SERVICE?',
@@ -303,7 +374,21 @@ class _FeedbacksState extends State<Feedbacks> {
                                 value: _selectedService.isNotEmpty
                                     ? _selectedService
                                     : null,
-                                items: _selectedServiceList,
+                                items: _selectedServiceList.map((item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item.value,
+                                    child: Column(
+                                      children: [
+                                        Text(item.child is Text
+                                            ? (item.child as Text).data ?? ''
+                                            : ''),
+                                        SizedBox(
+                                            height:
+                                                8), // Add space between items
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedService = value ?? '';
@@ -312,6 +397,16 @@ class _FeedbacksState extends State<Feedbacks> {
                                 selectedItemBuilder: (BuildContext context) {
                                   return _selectedServiceList.map<Widget>(
                                       (DropdownMenuItem<String> item) {
+                                    final selectedService =
+                                        _selectedServiceList.firstWhere(
+                                      (element) =>
+                                          element.value == _selectedService,
+                                      orElse: () => DropdownMenuItem<String>(
+                                        value: 'none',
+                                        child: Text('Service not found'),
+                                      ),
+                                    );
+
                                     return ConstrainedBox(
                                       constraints: BoxConstraints(
                                         maxWidth:
@@ -319,7 +414,11 @@ class _FeedbacksState extends State<Feedbacks> {
                                                 0.55,
                                       ),
                                       child: Text(
-                                        item.value ?? '',
+                                        selectedService.child is Text
+                                            ? (selectedService.child as Text)
+                                                    .data ??
+                                                ''
+                                            : '',
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     );
@@ -355,8 +454,8 @@ class _FeedbacksState extends State<Feedbacks> {
                                         'name': _nameController.text.isNotEmpty
                                             ? _nameController.text
                                             : 'Anonymous',
-                                        'office': _selectedOffice,
-                                        'service': _selectedService,
+                                        'office_name': _selectedOffice,
+                                        'service_name': _selectedService,
                                         'feedback': _feedbackController.text,
                                         'submissionTime': submissionTime,
                                       });
@@ -403,9 +502,9 @@ class _FeedbacksState extends State<Feedbacks> {
                                     builder: (context) => DetailsPage(
                                           name:
                                               submission['name'] ?? 'Anonymous',
-                                          office: submission['office'] ??
+                                          office: submission['office_name'] ??
                                               'Anonymous',
-                                          service: submission['service'] ??
+                                          service: submission['service_name'] ??
                                               'Anonymous',
                                           feedback: submission['feedback'] ??
                                               'Anonymous',
@@ -451,7 +550,7 @@ class _FeedbacksState extends State<Feedbacks> {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Office: ${submission['office']}',
+                                    'Office: ${submission['office_name']}',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.black.withOpacity(0.7),
@@ -460,7 +559,7 @@ class _FeedbacksState extends State<Feedbacks> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    'Service: ${submission['service']}',
+                                    'Service: ${submission['service_name']}',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.black.withOpacity(0.7),

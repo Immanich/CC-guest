@@ -52,6 +52,7 @@
 
 import 'package:citizen_charter/screens/elected_officials.dart';
 import 'package:citizen_charter/screens/events.dart';
+// import '../models/events.dart' as eventsModel;
 import 'package:citizen_charter/screens/feedback.dart';
 import 'package:citizen_charter/screens/home.dart';
 import 'package:citizen_charter/screens/menu_btn.dart';
@@ -63,6 +64,7 @@ import 'package:flutter/material.dart';
 import 'package:citizen_charter/utils/routes.dart';
 
 class BottomNavigationBarApp extends StatefulWidget {
+  // final eventsModel events;
   const BottomNavigationBarApp({super.key});
 
   @override
@@ -73,7 +75,7 @@ class _BottomNavigationBarAppState extends State<BottomNavigationBarApp> {
   int _selectedIndex = 0;
   String _appBarTitle = 'OFFICES';
 
-  static const List<Widget> _widgetOptions = <Widget>[
+  static final List<Widget> _widgetOptions = <Widget>[
     Home(),
     Events(),
     Notifications(),

@@ -120,6 +120,8 @@
 //   }
 // }
 
+import 'package:citizen_charter/models/service.dart';
+import 'package:citizen_charter/models/services_info.dart';
 import 'package:citizen_charter/models/transaction.dart';
 import 'package:citizen_charter/screens/services.dart';
 import 'package:flutter/material.dart';
@@ -136,29 +138,39 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   List<Office> offices = []; // To store the fetched offices as Offices objects
+  Map<int, List<Service>> servicesMap = {};
   bool isLoading = true;
   String errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    fetchOffices();
+    fetchOfficesAndServices();
   }
 
   // Function to fetch offices using ApiService
-  Future<void> fetchOffices() async {
+  Future<void> fetchOfficesAndServices() async {
     try {
-      List<dynamic> officeData = await ApiService()
-          .fetchOfficesFromServer(); // Use ApiService to fetch offices
+      List<dynamic> officeData = await ApiService().fetchOfficesFromServer();
+      List<Office> fetchedOffices =
+          officeData.map((data) => Office.fromJson(data)).toList();
+
+      Map<int, List<Service>> tempServicesMap = {};
+      for (var office in fetchedOffices) {
+        List<Service> services =
+            await ApiService().fetchServicesForOffice(office.id);
+        tempServicesMap[office.id] = services;
+      }
+
       setState(() {
-        offices = officeData
-            .map((data) => Office.fromJson(data))
-            .toList(); // Convert raw JSON to Offices objects
+        offices = fetchedOffices;
+        servicesMap = tempServicesMap;
         isLoading = false;
       });
     } catch (error) {
       setState(() {
-        errorMessage = 'Failed to load offices: ${error.toString()}';
+        errorMessage =
+            'Failed to load offices and services: ${error.toString()}';
         isLoading = false;
       });
     }
@@ -175,25 +187,22 @@ class _HomeState extends State<Home> {
                 (BuildContext context, BoxConstraints viewportConstraints) {
               if (isLoading) {
                 return Center(
-                  child: CircularProgressIndicator(), // Show loading spinner
+                  child: CircularProgressIndicator(),
                 );
               }
 
               if (errorMessage.isNotEmpty) {
                 return Center(
-                  child: Text(
-                      errorMessage), // Show error message if fetching fails
+                  child: Text(errorMessage),
                 );
               }
 
               if (offices.isEmpty) {
                 return Center(
-                  child: Text(
-                      'No offices available'), // Show if no offices are found
+                  child: Text('No offices available'),
                 );
               }
 
-              // Dynamically displaying offices using a GridView
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -202,59 +211,91 @@ class _HomeState extends State<Home> {
                   child: Column(
                     children: <Widget>[
                       SizedBox(height: 15),
-                      GridView.builder(
+                      ListView.builder(
                         shrinkWrap: true,
-                        physics: ScrollPhysics(), // Allow scrolling
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          // childAspectRatio: 0.9, //if using pixel 6 emulator
-                          // use the serve below if using a physical android device
-                          // php artisan serve --host=0.0.0.0 --port=8000
-                          childAspectRatio: 0.8,
-                          mainAxisSpacing: 10,
-                        ),
-                        itemCount: offices
-                            .length, // Number of items based on fetched offices
+                        physics:
+                            NeverScrollableScrollPhysics(), // Prevent inner scroll
+                        itemCount: offices.length,
                         itemBuilder: (BuildContext context, int index) {
-                          var office = offices[
-                              index]; // Get each office as an Offices object
-                          return GestureDetector(
-                            onTap: () {
-                              // Handle tap event (e.g., navigate to details)
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => OfficeDetailsScreen(
-                                    office: office,
-                                  ),
+                          var office = offices[index];
+
+                          // Get services for the current office
+                          var services = servicesMap[office.id] ?? [];
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                child: Text(
+                                  office.office_name,
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
                                 ),
-                              );
-                            },
-                            child: Column(
-                              children: <Widget>[
-                                Container(
-                                  width: 150,
-                                  height: 150,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xffCCD8FE),
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(5)),
-                                  ),
-                                  child: Icon(
-                                    Icons.business, // Icon placeholder
-                                    size: 60,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  office
-                                      .office_name, // Display office name using the model
-                                  style: TextStyle(fontSize: 16),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
+                              ),
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: services.length,
+                                itemBuilder:
+                                    (BuildContext context, int serviceIndex) {
+                                  var service = services[serviceIndex];
+                                  return InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              ServicesInfoScreen(
+                                            service,
+                                            office,
+                                            service.servicesInfos,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Card(
+                                      elevation:
+                                          4, // Add elevation for shadow effect
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                            15), // Rounded corners
+                                      ),
+                                      margin: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      color: const Color(
+                                          0xFFCCD8FE), // Light blue background color
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(
+                                            10), // Padding inside the card
+                                        child: ListTile(
+                                          title: Text(
+                                            service.service_name,
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          subtitle: Text(
+                                            service.description,
+                                            style: TextStyle(
+                                                color: Colors
+                                                    .black87), // Subtitle style
+                                            textAlign: TextAlign.justify,
+                                            maxLines:
+                                                null, // Allow text to wrap to multiple lines
+                                            overflow: TextOverflow
+                                                .visible, // Show the entire text
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -265,24 +306,6 @@ class _HomeState extends State<Home> {
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-class OfficeDetailsScreen extends StatelessWidget {
-  final Office office;
-
-  OfficeDetailsScreen({required this.office});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(office.office_name),
-      ),
-      body: Center(
-        child: Services(office: office),
       ),
     );
   }
